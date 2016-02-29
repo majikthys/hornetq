@@ -16,7 +16,6 @@ package org.hornetq.api.core;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.DatagramPacket;
-import java.net.DatagramSocket;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -45,6 +44,8 @@ public final class UDPBroadcastGroupConfiguration implements BroadcastEndpointFa
    private final String groupAddress;
 
    private final int groupPort;
+
+   public static final String PROPERTY_UDP_TTL = "udp.broadcast.group.ttl";
 
    public UDPBroadcastGroupConfiguration(final String groupAddress,
                                          final int groupPort,
@@ -109,7 +110,7 @@ public final class UDPBroadcastGroupConfiguration implements BroadcastEndpointFa
 
       private final int groupPort;
 
-      private DatagramSocket broadcastingSocket;
+      private MulticastSocket broadcastingSocket;
 
       private MulticastSocket receivingSocket;
 
@@ -172,7 +173,7 @@ public final class UDPBroadcastGroupConfiguration implements BroadcastEndpointFa
       {
          if (localBindPort != -1)
          {
-            broadcastingSocket = new DatagramSocket(localBindPort, localAddress);
+            broadcastingSocket = new MulticastSocket(new InetSocketAddress(localAddress, localBindPort));
          }
          else
          {
@@ -180,7 +181,13 @@ public final class UDPBroadcastGroupConfiguration implements BroadcastEndpointFa
             {
                HornetQClientLogger.LOGGER.broadcastGroupBindError();
             }
-            broadcastingSocket = new DatagramSocket();
+            broadcastingSocket = new MulticastSocket();
+         }
+
+         if (System.getProperties().containsKey(PROPERTY_UDP_TTL)) {
+            int ttl = Integer.parseInt(System.getProperty(PROPERTY_UDP_TTL));
+            HornetQClientLogger.LOGGER.info("Setting broadcast multicast udp ttl to: " + ttl + " from System property: " + PROPERTY_UDP_TTL);
+            broadcastingSocket.setTimeToLive(ttl);
          }
 
          open = true;
